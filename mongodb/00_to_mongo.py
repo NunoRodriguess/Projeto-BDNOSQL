@@ -52,6 +52,16 @@ def transform_data_orders(data):
                 "name": record[3],
                 "cost": float(record[4]),
             },
+            "address": {
+                "_id": int(record[5]),
+                "street_number": int(record[6]),
+                "street_name": record[7],
+                "city": record[8],
+                "country": {
+                    "_id": int(record[9]),
+                    "name": record[10]
+                }
+            },
             "history":[],
             "lines":[]
         }
@@ -196,10 +206,20 @@ try:
         CUST_ORDER.ORDER_DATE,
         SHIPPING_METHOD.METHOD_ID,
         SHIPPING_METHOD.METHOD_NAME,
-        SHIPPING_METHOD.COST
+        SHIPPING_METHOD.COST,
+        ADDRESS.ADDRESS_ID,
+        ADDRESS.STREET_NUMBER,
+        ADDRESS.STREET_NAME,
+        ADDRESS.CITY,
+        ADDRESS.COUNTRY_ID,
+        COUNTRY.COUNTRY_NAME
     FROM CUST_ORDER
         INNER JOIN SHIPPING_METHOD
             ON CUST_ORDER.SHIPPING_METHOD_ID = SHIPPING_METHOD.METHOD_ID
+        INNER JOIN ADDRESS
+            ON CUST_ORDER.DEST_ADDRESS_ID = ADDRESS.ADDRESS_ID
+        INNER JOIN COUNTRY
+            ON ADDRESS.COUNTRY_ID = COUNTRY.COUNTRY_ID
     """
     print("Fetching orders ...")
     cursor.execute(orders_query)
