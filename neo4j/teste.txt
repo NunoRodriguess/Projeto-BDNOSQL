@@ -1,0 +1,41 @@
+CALL apoc.trigger.install(
+   'neo4j',
+   'logNewMovies',
+   '
+   UNWIND $createdNodes AS node
+   WITH node
+   WHERE "Movie" IN labels(node)
+   CREATE(:Log{
+       message: "New movie added: " + node.title,
+       createdAt: timestamp()
+       })
+       ',
+    {phase:"after"}
+
+)
+
+CALL apoc.trigger.install(
+   'neo4j',
+   'summarizeMovieDetails',
+   '
+   UNWIND $createdNodes AS node
+   WITH node
+   WHERE "Movie" IN labels(node)
+   CREATE(:Log{
+       message: "New movie added: " + node.title,
+       createdAt: timestamp()
+       })
+       ',
+    {phase:"after"}
+
+) 
+
+CALL apoc.custom.declareProcedure(
+  'summarizeMovieDetails(title :: STRING?) :: (summary :: STRING)',
+  '
+    MATCH (m:Movie {title: $title})<-[:ACTED_IN]-(a:Actor)
+    RETURN "Total actors in the movie: " + toString(COUNT(a)) AS  summary
+  ',
+  'read',
+  'Returns the total number of actors in a movie'
+)
