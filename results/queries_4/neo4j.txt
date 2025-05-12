@@ -1,0 +1,46 @@
+// 1. Find customers who live in China
+MATCH (c:Customer)-[:LIVES]->(a:Address)
+WHERE a.country = "China"
+
+// 2 & 3. Find orders placed by these customers
+MATCH (c)-[:PLACED]->(o:Order)
+
+// 4 & 5. Get order line details and calculate metrics
+WITH c, o
+OPTIONAL MATCH (o)-[cont:CONTAINS]->(b:Book)
+WITH c, o, COLLECT({book: b, price: cont.price}) AS lines, SUM(cont.price) AS total_value
+
+// 6. Get status history and calculate days since last status
+WITH c, o, total_value, SIZE(lines) AS total_items
+OPTIONAL MATCH (o)-[h:HAS_STATUS]->(s:Status)
+WITH c, o, total_value, total_items, COLLECT(h.status_date) AS status_dates
+
+// Find the latest status date and calculate days since
+WITH c, o, total_value, total_items, status_dates,
+     REDUCE(latest = null, date IN status_dates | 
+         CASE WHEN latest IS NULL OR date > latest THEN date ELSE latest END
+     ) AS last_status_date
+
+WITH c, o, total_value, total_items, last_status_date,
+     CASE 
+       WHEN last_status_date IS NOT NULL 
+       THEN duration.inDays(datetime(last_status_date), datetime()).days
+       ELSE NULL 
+     END AS days_since_last_status
+
+// 7. Group by customer and format as expected result
+WITH c, 
+     COLLECT({
+       _id: o.id,
+       total_value: total_value,
+       total_items: total_items,
+       days_since_last_status: days_since_last_status
+     }) AS orders
+RETURN {
+  _id: c.id,
+  first_name: c.first_name,
+  last_name: c.last_name,
+  email: c.email,
+  orders: orders
+} AS result
+ORDER BY c.id
