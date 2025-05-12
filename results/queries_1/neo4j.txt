@@ -1,5 +1,3 @@
-//1
-
 MATCH (o:Order)-[c:CONTAINS]->(b:Book)
 WITH o,c,b
 MATCH (o:Order)-[:TO]->(a:Address {country:"Portugal"})

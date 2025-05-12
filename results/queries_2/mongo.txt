@@ -1,0 +1,128 @@
+[
+  {
+    $unwind:
+      /**
+       * path: Path to the array field.
+       * includeArrayIndex: Optional name for index.
+       * preserveNullAndEmptyArrays: Optional
+       *   toggle to unwind null and empty values.
+       */
+      {
+        path: "$lines"
+      }
+  },
+  {
+    $lookup:
+      /**
+       * from: The target collection.
+       * localField: The local join field.
+       * foreignField: The target join field.
+       * as: The name for the results.
+       * pipeline: Optional pipeline to run on the foreign collection.
+       * let: Optional variables to use in the pipeline field stages.
+       */
+      {
+        from: "books",
+        localField: "lines.book_id",
+        foreignField: "_id",
+        as: "book"
+      }
+  },
+  {
+    $addFields:
+      /**
+       * newField: The new field name.
+       * expression: The new field expression.
+       */
+      {
+        oneBook: {
+          $arrayElemAt: ["$book", 0]
+        }
+      }
+  },
+  {
+    $addFields:
+      /**
+       * newField: The new field name.
+       * expression: The new field expression.
+       */
+      {
+        num_authors: {
+          $size: "$oneBook.authors"
+        }
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$lines.book_id",
+        totalSales: {
+          $sum: "$lines.price"
+        },
+        num_authors: {
+          $first: "$num_authors"
+        },
+        authors: {
+          $first: "$oneBook.authors"
+        }
+      }
+  },
+  {
+    $unwind:
+      /**
+       * path: Path to the array field.
+       * includeArrayIndex: Optional name for index.
+       * preserveNullAndEmptyArrays: Optional
+       *   toggle to unwind null and empty values.
+       */
+      {
+        path: "$authors"
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$authors",
+        EARNINGS: {
+          $sum: {
+            $divide: [
+              "$totalSales",
+              "$num_authors"
+            ]
+          }
+        }
+      }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        AUTHOR_ID: "$_id._id",
+        AUTHOR_NAME: "$_id.name",
+        _id: 0,
+        EARNINGS: {
+          $round: ["$EARNINGS", 2]
+        }
+      }
+  },
+  {
+    $sort:
+      /**
+       * Provide any number of field/order pairs.
+       */
+      {
+        EARNINGS: -1
+      }
+  }
+]
