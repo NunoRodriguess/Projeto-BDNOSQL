@@ -1,12 +1,12 @@
 import oracledb
 import time
+import statistics
+import psutil
+from tabulate import tabulate
 
-# Connection settings
 USERNAME = "bookstore"
 PASSWORD = "bookstore"
 DSN = "localhost:1521/ORCLCDB"
-
-# Number of repetitions for each query
 REPETITIONS = 10
 
 # Dictionary of queries 
@@ -121,33 +121,74 @@ QUERIES = {
 
 def run_benchmark(cursor, query, query_name):
     times = []
-    print(f"\n Running benchmark: {query_name}")
+    cpus = []
+    mems = []
+    process = psutil.Process()
 
-    for i in range(REPETITIONS):
+    for _ in range(REPETITIONS):
+        cpu_before = process.cpu_percent(interval=None)
+        mem_before = process.memory_info().rss / (1024 ** 2)  # MB
+
         start_time = time.time()
         cursor.execute(query)
-        cursor.fetchall()
+        rows = cursor.fetchall()
         end_time = time.time()
-        duration = end_time - start_time
-        times.append(duration)
-        print(f"  Execution {i+1:02d}: {duration:.4f} seconds")
 
-    average_time = sum(times) / len(times)
-    print(f"Average time ({query_name}): {average_time:.4f} seconds")
+        cpu_after = process.cpu_percent(interval=None)
+        mem_after = process.memory_info().rss / (1024 ** 2)
+
+        duration_ms = (end_time - start_time) * 1000  # convert to ms
+        times.append(duration_ms)
+        cpus.append(cpu_after)
+        mems.append(mem_after)
+
+    avg_time = sum(times) / REPETITIONS
+    std_dev = statistics.stdev(times) if REPETITIONS > 1 else 0.0
+    avg_cpu = sum(cpus) / REPETITIONS
+    avg_mem = sum(mems) / REPETITIONS
+
+    return {
+        "query_name": query_name,
+        "avg_time": avg_time,
+        "std_dev": std_dev,
+        "avg_cpu": avg_cpu,
+        "avg_mem": avg_mem
+    }
 
 def main():
+    results = []
+
     try:
         connection = oracledb.connect(user=USERNAME, password=PASSWORD, dsn=DSN)
         cursor = connection.cursor()
 
         for query_name, query in QUERIES.items():
-            run_benchmark(cursor, query, query_name)
+            result = run_benchmark(cursor, query, query_name)
+            results.append(result)
 
         cursor.close()
         connection.close()
 
     except oracledb.DatabaseError as e:
         print("Error connecting or executing:", e)
+        return
+
+    # Prepare data for tabulate
+    table_data = [
+        [
+            r['query_name'],
+            f"{r['avg_time']:.2f}",
+            f"{r['std_dev']:.2f}",
+            f"{r['avg_cpu']:.1f}",
+            f"{r['avg_mem']:.2f}"
+        ]
+        for r in results
+    ]
+
+    headers = ["Query", "Avg Time (ms)", "Std Dev (ms)", "CPU (%)", "Mem (MB)"]
+    print("\n=== Benchmark Summary ===")
+    print(tabulate(table_data, headers=headers, tablefmt="github"))
+
 
 if __name__ == "__main__":
     main()

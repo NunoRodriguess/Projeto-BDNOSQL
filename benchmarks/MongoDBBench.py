@@ -1,13 +1,16 @@
 from pymongo import MongoClient
 import time
+import psutil
+from tabulate import tabulate
+import os
 
 # MongoDB connection
 CLIENT = MongoClient("mongodb://localhost:27017/")
-DB = CLIENT["bookstore"] 
+DB = CLIENT["bookstore"]
 COLLECTION = DB["customers"]
 
-# Number of repetitions for each query
 REPETITIONS = 10
+PROCESS = psutil.Process(os.getpid())
 
 # Dictionary of MongoDB queries
 QUERIES = {
@@ -117,22 +120,60 @@ QUERIES = {
 
 def run_benchmark(collection, query, query_name):
     times = []
-    print(f"\nRunning benchmark: {query_name}")
+    cpu_usages = []
+    mem_usages = []
 
-    for i in range(REPETITIONS):
+    for _ in range(REPETITIONS):
+        PROCESS.cpu_percent(interval=None)  # Reset CPU percent
+        start_mem = PROCESS.memory_info().rss / (1024 ** 2)  # in MB
         start_time = time.time()
-        list(collection.aggregate(query))  # Execute aggregation pipeline
-        end_time = time.time()
-        duration = end_time - start_time
-        times.append(duration)
-        print(f"  Execution {i+1:02d}: {duration:.4f} seconds")
 
-    average_time = sum(times) / len(times)
-    print(f"Average time ({query_name}): {average_time:.4f} seconds")
+        list(collection.aggregate(query))  # Run MongoDB aggregation
+
+        end_time = time.time()
+        end_mem = PROCESS.memory_info().rss / (1024 ** 2)
+        cpu = PROCESS.cpu_percent(interval=None)
+        
+        duration_ms = (end_time - start_time) * 1000
+        mem_used = end_mem - start_mem
+
+        times.append(duration_ms)
+        cpu_usages.append(cpu)
+        mem_usages.append(mem_used)
+
+    avg_time = sum(times) / REPETITIONS
+    std_dev = (sum((x - avg_time) ** 2 for x in times) / (REPETITIONS - 1)) ** 0.5 if REPETITIONS > 1 else 0.0
+    avg_cpu = sum(cpu_usages) / REPETITIONS
+    avg_mem = sum(mem_usages) / REPETITIONS
+
+    return {
+        "query_name": query_name,
+        "avg_time": avg_time,
+        "std_dev": std_dev,
+        "avg_cpu": avg_cpu,
+        "avg_mem": avg_mem
+    }
 
 def main():
+    results = []
     for query_name, query in QUERIES.items():
-        run_benchmark(COLLECTION, query, query_name)
+        result = run_benchmark(COLLECTION, query, query_name)
+        results.append(result)
+
+    table_data = [
+        [
+            r['query_name'],
+            f"{r['avg_time']:.2f}",
+            f"{r['std_dev']:.2f}",
+            f"{r['avg_cpu']:.2f}",
+            f"{r['avg_mem']:.2f}"
+        ]
+        for r in results
+    ]
+    headers = ["Query", "Avg Time (ms)", "Std Dev (ms)", "Avg CPU (%)", "Avg Mem (MB)"]
+
+    print("\n=== MongoDB Benchmark Summary ===")
+    print(tabulate(table_data, headers=headers, tablefmt="github"))
 
 if __name__ == "__main__":
     main()
