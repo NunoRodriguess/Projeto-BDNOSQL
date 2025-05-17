@@ -1,4 +1,4 @@
-SELECT 
+SELECT DISTINCT
     c.customer_id, 
     c.first_name, 
     c.last_name,
@@ -10,7 +10,7 @@ SELECT
      FROM order_line ol_inner 
      WHERE ol_inner.order_id = o.order_id) AS total_value,
 
-    -- Number of items in the order
+    -- Number of items
     (SELECT COUNT(*) 
      FROM order_line ol_inner 
      WHERE ol_inner.order_id = o.order_id) AS total_items,
@@ -34,16 +34,17 @@ FROM
 JOIN 
     cust_order o ON o.customer_id = c.customer_id
 
--- Filter customers with address in China
-WHERE 
-    EXISTS (
-        SELECT 1 
-        FROM customer_address ca
-        JOIN address a ON a.address_id = ca.address_id
-        JOIN country co ON a.country_id = co.country_id
-        WHERE ca.customer_id = c.customer_id
-        AND co.country_id = 42
-    )
+-- Filter by country
+WHERE c.customer_id IN (
+    SELECT ca.customer_id
+    FROM customer_address ca
+    JOIN address a ON a.address_id = ca.address_id
+    JOIN country co ON a.country_id = co.country_id
+    WHERE co.country_id = 42
+)
 
 ORDER BY 
-    c.customer_id, o.order_id;
+    c.customer_id, o.order_id
+
+-- Only the first 5 rows are shown
+-- FETCH FIRST 5 ROWS ONLY;

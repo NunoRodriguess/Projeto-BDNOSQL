@@ -1,0 +1,8 @@
+
+=== Benchmark Summary ===
+| Query                                                   |   Avg Time (ms) |   Std Dev (ms) |   CPU (%) |   Mem (MB) |
+|---------------------------------------------------------|-----------------|----------------|-----------|------------|
+| Query 1: Bestselling Books in Portugal                  |           12.59 |          16.58 |       0   |      40.18 |
+| Query 2: Authors Who Earned the Most                    |           98.18 |           6.02 |       8   |      43.48 |
+| Query 3: Country Where the 'Harper' Group Sold the Most |           10.45 |          15.64 |       0   |      43.68 |
+| Query 4: Customers from China and Their Orders          |         2310.92 |          14.47 |       0.3 |      43.69 |

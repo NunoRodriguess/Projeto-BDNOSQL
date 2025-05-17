@@ -68,7 +68,7 @@ QUERIES = {
     ''',
 
     "Query 4: Customers from China and Their Orders": '''
-        SELECT 
+        SELECT DISTINCT
             c.customer_id, 
             c.first_name, 
             c.last_name,

@@ -48,5 +48,8 @@
   },
   
   // 8. Sort results
-  { $sort: { _id: 1 } }
+  { $sort: { _id: 1 } },
+
+  // 9. Limit to top 3
+  // { $limit: 3 }
 ]

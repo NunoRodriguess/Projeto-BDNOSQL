@@ -1,0 +1,8 @@
+
+=== MongoDB Benchmark Summary ===
+| Query                                                   |   Avg Time (ms) |   Std Dev (ms) |   Avg CPU (%) |   Avg Mem (MB) |
+|---------------------------------------------------------|-----------------|----------------|---------------|----------------|
+| Query 1: Bestselling Books in Portugal                  |            3.8  |           6.78 |          0    |           0.04 |
+| Query 2: Authors Who Earned the Most                    |            1.94 |           0.11 |          0    |           0    |
+| Query 3: Country Where the 'Harper' Group Sold the Most |           97.46 |           1.22 |          0    |           0    |
+| Query 4: Customers from China and Their Orders          |          108.19 |           4.7  |          2.99 |           0.25 |

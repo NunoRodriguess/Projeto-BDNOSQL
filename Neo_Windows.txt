@@ -1,0 +1,8 @@
+
+=== Neo4j Benchmark Summary ===
+| Query                                                   |   Avg Time (ms) |   Std Dev (ms) |   Avg CPU (%) |   Avg Mem (MB) |
+|---------------------------------------------------------|-----------------|----------------|---------------|----------------|
+| Query 1: Bestselling Books in Portugal                  |          356.34 |         996.33 |         44.13 |           0.15 |
+| Query 2: Authors Who Earned the Most                    |          416.7  |         198.16 |         73.11 |           0.5  |
+| Query 3: Country Where the 'Harper' Group Sold the Most |           32.07 |          48.82 |          7.64 |           0    |
+| Query 4: Customers from China and Their Orders          |          182.05 |         203.36 |         53.27 |           0    |
