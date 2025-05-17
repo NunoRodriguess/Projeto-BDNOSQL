@@ -1,0 +1,99 @@
+
+// validate_email
+
+exports = async function(changeEvent) {
+
+  const docId = changeEvent.documentKey._id;
+  const { updateDescription, fullDocument } = changeEvent;
+
+  const serviceName = "NoSQL";
+  const database = "bookstore";
+  const collection = context.services.get(serviceName).db(database).collection(changeEvent.ns.coll);
+
+  try {
+      _new_customer = changeEvent.fullDocument
+      var re = new RegExp("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$");
+      var result = re.test(_new_customer.email)
+  
+     if (changeEvent.operationType === "insert" && result) {
+      await collection.insertOne(changeEvent.fullDocument);
+    }
+    else if (changeEvent.operationType === "update" && result) {
+      await collection.replaceOne({"_id": docId}, changeEvent.fullDocument);
+    }
+    else{
+      throw new Error("Invalid email format.");
+    }
+  } catch(err) {
+    console.log("Error:", err.message);
+  }
+};
+
+// insert_order_history
+
+
+exports = async function(changeEvent) {
+  const docId = changeEvent.documentKey._id;
+  const serviceName = "NoSQL";
+  const database = "bookstore";
+  const collection = context.services.get(serviceName).db(database).collection(changeEvent.ns.coll);
+
+  try {
+    if (changeEvent.operationType === "insert") {
+      const _full_document = changeEvent.fullDocument;
+
+      if (!_full_document.history) {
+        _full_document.history = [];
+      }
+
+      const currentDate = new Date().toISOString().split('T')[0];
+      const _new_history_element = {
+        _id: new BSON.ObjectId(),
+        date: currentDate,
+        status: "Order Received"
+      };
+
+      // Add to history array
+      _full_document.history.push(_new_history_element);
+
+      await collection.insertOne(_full_document);
+    }
+  } catch (err) {
+    console.log("error performing mongodb write: ", err.message);
+  }
+};
+
+
+// prevent_book_deletion
+
+exports = async function(changeEvent) {
+  const docId = changeEvent.documentKey._id;
+  const serviceName = "NoSQL";
+  const database = "bookstore";
+  const collectionName = changeEvent.ns.coll;
+  const collection = context.services.get(serviceName).db(database).collection(collectionName);
+
+  // This is the collection containing lines with references to books
+  const ordersCollection = context.services.get(serviceName).db(database).collection("orders");
+
+  try {
+    if (changeEvent.operationType === "delete") {
+      const pipeline = [
+        { $unwind: "$lines" },
+        { $match: { "lines.book_id": docId } }
+      ];
+
+      const result = await ordersCollection.aggregate(pipeline).toArray();
+
+      if (result.length > 0) {
+        console.log(`Deletion prevented: Book ${docId} is referenced in 'orders'.`);
+        return;
+      }
+
+      await collection.deleteOne({ "_id": docId });
+      console.log(`Book ${docId} deleted.`);
+    }
+  } catch (err) {
+    console.log("Error performing MongoDB operation:", err.message);
+  }
+};
