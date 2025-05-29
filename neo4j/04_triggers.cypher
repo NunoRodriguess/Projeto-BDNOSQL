@@ -4,33 +4,14 @@ CALL apoc.trigger.install(
   'neo4j',
   'validate_email',
   '
-  // Validate created nodes
-  UNWIND $createdNodes AS node
-  WITH node
-  WHERE "Customer" IN labels(node)
-    AND (node.email IS NULL OR NOT node.email =~ "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\\\.[A-Za-z]{2,}$")
-  CALL apoc.util.validate(
-    true,
-    "Invalid email format on create: " + coalesce(toString(node.email), "null"),
-    []
-  )
-  RETURN null
-  UNION
-
-  // Validate updated nodes
-  UNWIND keys($assignedNodeProperties) AS nodeId
-  WITH apoc.node.fromNodeId(toInteger(nodeId)) AS node
-  WHERE "Customer" IN labels(node)
-    AND exists(node.email)
-    AND (node.email IS NULL OR NOT node.email =~ "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\\\.[A-Za-z]{2,}$")
-  CALL apoc.util.validate(
-    true,
-    "Invalid email format on update: " + coalesce(toString(node.email), "null"),
-    []
-  )
-  RETURN null
-  ',
-  {phase: "rollback"}
+   UNWIND apoc.trigger.propertiesByKey($assignedNodeProperties, "email") AS prop
+   CALL apoc.util.validate(
+     NOT prop.new =~ "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\\\.[A-Za-z]{2,}$", 
+     "Invalid email format. Got %s", 
+     [prop.new]
+   ) RETURN null
+   ',
+  {phase: 'before'}
 )
 
 
