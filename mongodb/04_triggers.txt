@@ -2,30 +2,41 @@
 // validate_email
 
 exports = async function(changeEvent) {
-
   const docId = changeEvent.documentKey._id;
-  const { updateDescription, fullDocument } = changeEvent;
-
   const serviceName = "NoSQL";
   const database = "bookstore";
   const collection = context.services.get(serviceName).db(database).collection(changeEvent.ns.coll);
-
-  try {
-      _new_customer = changeEvent.fullDocument
-      var re = new RegExp("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$");
-      var result = re.test(_new_customer.email)
   
-     if (changeEvent.operationType === "insert" && result) {
-      await collection.insertOne(changeEvent.fullDocument);
+  try {
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    
+    if (changeEvent.operationType === "insert") {
+      const newCustomer = changeEvent.fullDocument;
+      if (newCustomer.email && !emailRegex.test(newCustomer.email)) {
+        // Delete invalid insert
+        await collection.deleteOne({_id: docId});
+        console.log(`Deleted customer ${docId} due to invalid email: ${newCustomer.email}`);
+      }
     }
-    else if (changeEvent.operationType === "update" && result) {
-      await collection.replaceOne({"_id": docId}, changeEvent.fullDocument);
-    }
-    else{
-      throw new Error("Invalid email format.");
+    else if (changeEvent.operationType === "update" || changeEvent.operationType === "replace") {
+      const currentDocument = changeEvent.fullDocument;
+      if (currentDocument?.email && !emailRegex.test(currentDocument.email)) {
+        // Email is invalid, revert to previous state
+        if (changeEvent.fullDocumentBeforeChange) {
+          await collection.replaceOne(
+            {_id: docId}, 
+            changeEvent.fullDocumentBeforeChange
+          );
+          console.log(`Reverted customer ${docId} due to invalid email: ${currentDocument.email}`);
+        } else {
+          // Delete the document if we cant revert
+          await collection.deleteOne({_id: docId});
+          console.log(`Deleted customer ${docId} due to invalid email and no previous state available`);
+        }
+      }
     }
   } catch(err) {
-    console.log("Error:", err.message);
+    console.log("Error in trigger:", err.message);
   }
 };
 
@@ -37,29 +48,33 @@ exports = async function(changeEvent) {
   const serviceName = "NoSQL";
   const database = "bookstore";
   const collection = context.services.get(serviceName).db(database).collection(changeEvent.ns.coll);
-
+  
   try {
     if (changeEvent.operationType === "insert") {
-      const _full_document = changeEvent.fullDocument;
-
-      if (!_full_document.history) {
-        _full_document.history = [];
-      }
-
       const currentDate = new Date().toISOString().split('T')[0];
-      const _new_history_element = {
+      const historyElement = {
         _id: new BSON.ObjectId(),
+        status:{
+        _id:1,
         date: currentDate,
-        status: "Order Received"
+        status: "Order Received" 
+        }
       };
-
-      // Add to history array
-      _full_document.history.push(_new_history_element);
-
-      await collection.insertOne(_full_document);
+      
+      // First, ensure the history field exists
+      await collection.updateOne(
+        { _id: docId, history: { $exists: false } },
+        { $set: { history: [] } }
+      );
+      
+      // Then push the new element
+      await collection.updateOne(
+        { _id: docId },
+        { $push: { history: historyElement } }
+      );
     }
   } catch (err) {
-    console.log("error performing mongodb write: ", err.message);
+    console.log("Error performing MongoDB write:", err.message);
   }
 };
 
@@ -86,12 +101,10 @@ exports = async function(changeEvent) {
       const result = await ordersCollection.aggregate(pipeline).toArray();
 
       if (result.length > 0) {
+        await collection.insertOne(changeEvent.fullDocumentBeforeChange)
         console.log(`Deletion prevented: Book ${docId} is referenced in 'orders'.`);
         return;
       }
-
-      await collection.deleteOne({ "_id": docId });
-      console.log(`Book ${docId} deleted.`);
     }
   } catch (err) {
     console.log("Error performing MongoDB operation:", err.message);
