@@ -44,4 +44,3 @@ RETURN {
   orders: orders
 } AS result
 ORDER BY c.id
-// LIMIT 3;

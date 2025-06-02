@@ -1,88 +1,42 @@
-[ 
-  {
-    $match:
-      /**
-       * query: The query in MQL.
-       */
-      {
-        "address.country.name": "Portugal"
-      }
-  },
-  {
-    $unwind:
-      /**
-       * path: Path to the array field.
-       * includeArrayIndex: Optional name for index.
-       * preserveNullAndEmptyArrays: Optional
-       *   toggle to unwind null and empty values.
-       */
-      {
-        path: "$lines"
-      }
-  },
-  {
-    $lookup:
-      /**
-       * from: The target collection.
-       * localField: The local join field.
-       * foreignField: The target join field.
-       * as: The name for the results.
-       * pipeline: Optional pipeline to run on the foreign collection.
-       * let: Optional variables to use in the pipeline field stages.
-       */
-      {
-        from: "books",
-        localField: "lines.book_id",
-        foreignField: "_id",
-        as: "TITLE"
-      }
-  },
-  {
-    $addFields:
-      /**
-       * newField: The new field name.
-       * expression: The new field expression.
-       */
-      {
-        title: {
-          $arrayElemAt: ["$TITLE.title", 0]
-        }
-      }
-  },
-  {
-    $group:
-      /**
-       * _id: The id of the group.
-       * fieldN: The first field name.
-       */
-      {
-        _id: {
+[
+  // 1. Filtrar pedidos com endereço em Portugal
+  { $match: { "address.country.name": "Portugal" } },
+  
+  // 2. Decompor as linhas de pedido
+  { $unwind: { path: "$lines" } },
+  
+  // 3. Associar detalhes dos livros
+  { $lookup: {
+      from: "books",
+      localField: "lines.book_id",
+      foreignField: "_id",
+      as: "TITLE"
+  } },
+  
+  // 4. Extrair título do livro
+  { $addFields: {
+      title: { $arrayElemAt: ["$TITLE.title", 0] }
+  } },
+  
+  // 5. Agrupar por livro e país
+  { $group: {
+      _id: {
           country: "$address.country",
           book_id: "$lines.book_id",
           title: "$title"
-        },
-        Vendas: {
-          $count: {}
-        }
-      }
-  },
-  {
-    $project: {
+      },
+      Vendas: { $count: {} }
+  } },
+  
+  // 6. Formatar os resultados
+  { $project: {
       _id: 0,
-      // drop _id
       BOOK_ID: "$_id.book_id",
       COUNTRY_NAME: "$_id.country.name",
       TITLE: "$_id.title",
       Vendas: "$Vendas"
-    }
-  },
-  {
-    $sort:
-      /**
-       * Provide any number of field/order pairs.
-       */
-      {
-        Vendas: -1
-      }
-  }
+  } },
+  
+  // 7. Ordenar por número de vendas
+  { $sort: { Vendas: -1 } }
 ]

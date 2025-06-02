@@ -45,6 +45,3 @@ WHERE c.customer_id IN (
 
 ORDER BY 
     c.customer_id, o.order_id
-
--- Only the first 5 rows are shown
--- FETCH FIRST 5 ROWS ONLY;

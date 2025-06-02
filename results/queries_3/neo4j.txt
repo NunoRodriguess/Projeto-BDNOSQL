@@ -1,6 +1,6 @@
 MATCH (b:Book)<-[:CONTAINS]-(o:Order)
-WITH b,o
+WITH b, o
 MATCH (o)-[:TO]->(a:Address)
 WHERE b.publisher CONTAINS 'Harper'
-RETURN a.country,count(*) as VENDAS
-ORDER BY VENDAS Desc
+RETURN a.country, count(*) as VENDAS
+ORDER BY VENDAS DESC

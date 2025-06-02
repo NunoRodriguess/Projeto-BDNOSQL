@@ -1,14 +1,11 @@
 MATCH (b:Book)-[:WRITTEN_BY]->(a:Author)
 WITH b, count(a) AS num_authors
-
 MATCH (b)<-[c:CONTAINS]-(o:Order)
 WITH b, num_authors, sum(c.price) AS book_total
-
 MATCH (b)-[:WRITTEN_BY]->(author:Author)
 WITH author, book_total/num_authors AS author_earnings
-
 RETURN 
-  author.id AS AUTHOR_ID,
-  author.name AS AUTHOR_NAME,
-  round(sum(author_earnings), 2) AS EARNINGS
+    author.id AS AUTHOR_ID,
+    author.name AS AUTHOR_NAME,
+    round(sum(author_earnings), 2) AS EARNINGS
 ORDER BY EARNINGS DESC

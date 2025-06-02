@@ -1,5 +1,5 @@
 MATCH (o:Order)-[c:CONTAINS]->(b:Book)
-WITH o,c,b
-MATCH (o:Order)-[:TO]->(a:Address {country:"Portugal"})
-RETURN b.id,b.title,a.country,count(c) AS Vendas
+WITH o, c, b
+MATCH (o:Order)-[:TO]->(a:Address {country: "Portugal"})
+RETURN b.id, b.title, a.country, count(c) AS Vendas
 ORDER BY Vendas DESC

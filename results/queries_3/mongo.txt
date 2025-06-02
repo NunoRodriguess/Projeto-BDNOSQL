@@ -1,76 +1,31 @@
 [
-  {
-    $lookup:
-      /**
-       * from: The target collection.
-       * localField: The local join field.
-       * foreignField: The target join field.
-       * as: The name for the results.
-       * pipeline: Optional pipeline to run on the foreign collection.
-       * let: Optional variables to use in the pipeline field stages.
-       */
-      {
-        from: "books",
-        localField: "lines.book_id",
-        foreignField: "_id",
-        as: "book"
-      }
-  },
-  {
-    $unwind:
-      /**
-       * path: Path to the array field.
-       * includeArrayIndex: Optional name for index.
-       * preserveNullAndEmptyArrays: Optional
-       *   toggle to unwind null and empty values.
-       */
-      {
-        path: "$book"
-      }
-  },
-  {
-    $match:
-      /**
-       * query: The query in MQL.
-       */
-      {
-        "book.publisher.name": {
-          $regex: "Harper"
-        }
-      }
-  },
-  {
-    $group:
-      /**
-       * _id: The id of the group.
-       * fieldN: The first field name.
-       */
-      {
-        _id: "$address.country.name",
-        Vendas: {
-          $count: {}
-        }
-      }
-  },
-  {
-    $sort:
-      /**
-       * Provide any number of field/order pairs.
-       */
-      {
-        Vendas: -1
-      }
-  },
-  {
-    $project:
-      /**
-       * specifications: The fields to
-       *   include or exclude.
-       */
-      {
-        COUNTRY_NAME: "$_id",
-        Vendas: "$Vendas",
-        _id: 0
-      }
-  }
+  // 1. Associar detalhes dos livros
+  { $lookup: {
+      from: "books",
+      localField: "lines.book_id",
+      foreignField: "_id",
+      as: "book"
+  } },
+  
+  // 2. Decompor o array de livros
+  { $unwind: { path: "$book" } },
+  
+  // 3. Filtrar por editora Harper
+  { $match: { "book.publisher.name": { $regex: "Harper" } } },
+  
+  // 4. Agrupar por país
+  { $group: {
+      _id: "$address.country.name",
+      Vendas: { $count: {} }
+  } },
+  
+  // 5. Ordenar por número de vendas
+  { $sort: { Vendas: -1 } },
+  
+  // 6. Formatar resultados
+  { $project: {
+      COUNTRY_NAME: "$_id",
+      Vendas: "$Vendas",
+      _id: 0
+  } }
 ]
